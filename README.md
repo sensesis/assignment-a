@@ -19,7 +19,20 @@ _(추후 작성)_
 
 ## 실행 방법
 
-_(추후 작성)_
+### 로컬
+```bash
+# 1. DB 기동
+cd enrollment-infra
+docker-compose up -d
+
+# 2. 앱 실행
+cd ../enrollment-api
+./gradlew bootRun
+
+# 3. 헬스체크
+curl http://localhost:8080/actuator/health
+# {"status":"UP",...}
+```
 
 ## API 목록 및 예시
 

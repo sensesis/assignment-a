@@ -1,0 +1,43 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.env.local
+.env.*.local
+
+# Gradle
+.gradle/
+build/
+!gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Maven
+target/
+
+# Logs
+logs/
+*.log
+
+# Spring
+HELP.md
+
+# Claude
+.claude/
+
+# Misc
+*.bak
+*.tmp
+
+.omc
+
+todo.md

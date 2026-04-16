@@ -16,6 +16,7 @@ _(추후 작성)_
 - Spring Data JPA + Flyway
 - Gradle
 - Docker / Docker Compose
+- Swagger UI (springdoc-openapi)
 
 ## 실행 방법
 
@@ -32,6 +33,9 @@ cd ../enrollment-api
 # 3. 헬스체크
 curl http://localhost:8080/actuator/health
 # {"status":"UP",...}
+
+# 4. Swagger UI 접근
+open http://localhost:8080/swagger-ui/index.html
 ```
 
 ## API 목록 및 예시

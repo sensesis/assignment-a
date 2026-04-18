@@ -70,17 +70,20 @@ public class ClassEntity extends BaseEntity {
     @Version
     private Long version;
 
+    // 강의 공개
     public void publish() {
         validateTransition(ClassStatus.OPEN);
         validateFieldsForPublish();
         this.status = ClassStatus.OPEN;
     }
 
+    // 강의 모집 마감
     public void close() {
         validateTransition(ClassStatus.CLOSED);
         this.status = ClassStatus.CLOSED;
     }
 
+    // 강의 수정
     public void update(String title, String description, Integer price,
                        Integer capacity, LocalDate startDate, LocalDate endDate) {
         if (this.status != ClassStatus.DRAFT) {
@@ -105,18 +108,37 @@ public class ClassEntity extends BaseEntity {
         }
     }
 
+    // 강의 소유자 검증
     public void validateOwner(Long userId) {
         if (this.createdBy == null || !this.createdBy.getId().equals(userId)) {
             throw new BusinessException(ErrorCode.NOT_COURSE_OWNER);
         }
     }
 
+    // 수강생 수 증가
+    public void incrementEnrolled() {
+        if (this.enrolledCount >= this.capacity) {
+            throw new BusinessException(ErrorCode.CAPACITY_EXCEEDED);
+        }
+        this.enrolledCount++;
+    }
+
+    // 수강생 수 감소
+    public void decrementEnrolled() {
+        if (this.enrolledCount <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+        this.enrolledCount--;
+    }
+
+    // 상태 전환 검증
     private void validateTransition(ClassStatus target) {
         if (!this.status.canTransitionTo(target)) {
             throw new BusinessException(ErrorCode.INVALID_STATE_TRANSITION);
         }
     }
 
+    // 강의 공개 필드 검증
     private void validateFieldsForPublish() {
         if (price == null || price < 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);

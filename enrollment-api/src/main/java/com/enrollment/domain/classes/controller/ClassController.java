@@ -5,6 +5,8 @@ import com.enrollment.domain.classes.dto.ClassResponse;
 import com.enrollment.domain.classes.dto.ClassUpdateRequest;
 import com.enrollment.domain.classes.entity.ClassStatus;
 import com.enrollment.domain.classes.service.ClassService;
+import com.enrollment.domain.enrollment.dto.EnrollmentWithUserResponse;
+import com.enrollment.domain.enrollment.service.EnrollmentService;
 import com.enrollment.global.error.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ClassController {
 
     private final ClassService classService;
+    private final EnrollmentService enrollmentService;
 
     @Operation(summary = "강의 등록", description = "새로운 강의를 등록합니다.")
     @ApiResponses(value = {
@@ -169,5 +172,25 @@ public class ClassController {
             @RequestHeader("X-User-Id") Long userId,
             @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(classService.getMyClasses(userId, pageable));
+    }
+
+    @Operation(summary = "강의별 수강생 목록 조회", description = "강사 본인의 강의에 등록된 수강생 목록을 페이지 단위로 조회합니다.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "수강생 목록 조회 성공",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = Page.class))),
+        @ApiResponse(responseCode = "403", description = "강의 소유자가 아님 (NOT_COURSE_OWNER)",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "강의를 찾을 수 없음 (CLASS_NOT_FOUND)",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/{id}/enrollments")
+    public ResponseEntity<Page<EnrollmentWithUserResponse>> getClassEnrollments(
+            @RequestHeader("X-User-Id") Long userId,
+            @PathVariable Long id,
+            @ParameterObject @PageableDefault(size = 20, sort = "enrolledAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(enrollmentService.getClassEnrollments(userId, id, pageable));
     }
 }

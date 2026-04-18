@@ -5,6 +5,7 @@ import com.enrollment.domain.classes.entity.ClassStatus;
 import com.enrollment.domain.classes.repository.ClassRepository;
 import com.enrollment.domain.enrollment.dto.EnrollmentCreateRequest;
 import com.enrollment.domain.enrollment.dto.EnrollmentResponse;
+import com.enrollment.domain.enrollment.dto.EnrollmentWithUserResponse;
 import com.enrollment.domain.enrollment.entity.Enrollment;
 import com.enrollment.domain.enrollment.entity.EnrollmentStatus;
 import com.enrollment.domain.payment.entity.Payment;
@@ -15,6 +16,8 @@ import com.enrollment.domain.user.repository.UserRepository;
 import com.enrollment.global.error.exception.BusinessException;
 import com.enrollment.global.error.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -120,5 +123,31 @@ public class EnrollmentService {
         }
 
         return EnrollmentResponse.from(enrollment);
+    }
+
+    // 내 수강 신청 목록 조회
+    public Page<EnrollmentResponse> getMyEnrollments(Long userId, Pageable pageable) {
+
+        // 사용자 존재 여부 검증
+        if (!userRepository.existsById(userId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        return enrollmentRepository.findByUserId(userId, pageable)
+                .map(EnrollmentResponse::from);
+    }
+
+    // 강의별 수강생 목록 조회 (강사 전용)
+    public Page<EnrollmentWithUserResponse> getClassEnrollments(Long userId, Long classId, Pageable pageable) {
+
+        // 강의 조회
+        ClassEntity classEntity = classRepository.findWithCreatorById(classId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLASS_NOT_FOUND));
+
+        // 강의 소유자 검증
+        classEntity.validateOwner(userId);
+
+        return enrollmentRepository.findByClassEntityId(classId, pageable)
+                .map(EnrollmentWithUserResponse::from);
     }
 }

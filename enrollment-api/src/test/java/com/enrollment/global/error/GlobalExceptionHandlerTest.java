@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.*;
 
 import com.enrollment.domain.classes.service.ClassService;
+import com.enrollment.domain.enrollment.service.EnrollmentService;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -30,6 +31,8 @@ class GlobalExceptionHandlerTest {
     MockMvc mockMvc;
     @MockBean
     ClassService classService;
+    @MockBean
+    EnrollmentService enrollmentService;
 
     @Test
     void BusinessException_시_ErrorCode의_HttpStatus와_포맷으로_응답() throws Exception {

@@ -15,16 +15,20 @@ import java.util.Optional;
 
 public interface ClassRepository extends JpaRepository<ClassEntity, Long> {
 
+    // 강의 조회
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM ClassEntity c JOIN FETCH c.createdBy WHERE c.id = :id")
     Optional<ClassEntity> findByIdForUpdate(@Param("id") Long id);
 
+    // 강의 소유자 조회
     @EntityGraph(attributePaths = "createdBy")
     Optional<ClassEntity> findWithCreatorById(Long id);
 
+    // 강의 상태별 목록 조회
     @EntityGraph(attributePaths = "createdBy")
     Page<ClassEntity> findByStatus(ClassStatus status, Pageable pageable);
 
+    // 강의 소유자별 목록 조회
     @EntityGraph(attributePaths = "createdBy")
     Page<ClassEntity> findByCreatedById(Long userId, Pageable pageable);
 }

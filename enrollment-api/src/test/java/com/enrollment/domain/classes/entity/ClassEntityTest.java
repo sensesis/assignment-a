@@ -244,6 +244,71 @@ class ClassEntityTest {
         }
     }
 
+    @Nested
+    class IncrementEnrolled {
+
+        @Test
+        void 정상_증가() {
+            ClassEntity entity = validDraft();
+            entity.incrementEnrolled();
+            assertThat(entity.getEnrolledCount()).isEqualTo(1);
+        }
+
+        @Test
+        void 정원_도달_시_CAPACITY_EXCEEDED_예외() {
+            ClassEntity entity = ClassEntity.builder()
+                    .createdBy(owner)
+                    .title("Java 기초").description("설명")
+                    .price(10000).capacity(2).enrolledCount(2)
+                    .startDate(LocalDate.of(2025, 3, 1))
+                    .endDate(LocalDate.of(2025, 6, 30))
+                    .status(ClassStatus.OPEN).build();
+            assertThatThrownBy(entity::incrementEnrolled)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.CAPACITY_EXCEEDED));
+        }
+
+        @Test
+        void 정원_마지막_자리까지_증가_가능() {
+            ClassEntity entity = ClassEntity.builder()
+                    .createdBy(owner)
+                    .title("Java 기초").description("설명")
+                    .price(10000).capacity(2).enrolledCount(1)
+                    .startDate(LocalDate.of(2025, 3, 1))
+                    .endDate(LocalDate.of(2025, 6, 30))
+                    .status(ClassStatus.OPEN).build();
+            entity.incrementEnrolled();
+            assertThat(entity.getEnrolledCount()).isEqualTo(2);
+        }
+    }
+
+    @Nested
+    class DecrementEnrolled {
+
+        @Test
+        void 정상_감소() {
+            ClassEntity entity = ClassEntity.builder()
+                    .createdBy(owner)
+                    .title("Java 기초").description("설명")
+                    .price(10000).capacity(30).enrolledCount(5)
+                    .startDate(LocalDate.of(2025, 3, 1))
+                    .endDate(LocalDate.of(2025, 6, 30))
+                    .status(ClassStatus.OPEN).build();
+            entity.decrementEnrolled();
+            assertThat(entity.getEnrolledCount()).isEqualTo(4);
+        }
+
+        @Test
+        void enrolledCount_0일_때_감소_시_INVALID_INPUT_예외() {
+            ClassEntity entity = validDraft();
+            assertThatThrownBy(entity::decrementEnrolled)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.INVALID_INPUT));
+        }
+    }
+
     private void setId(Object obj, Long id) throws Exception {
         Field field = obj.getClass().getDeclaredField("id");
         field.setAccessible(true);

@@ -12,6 +12,8 @@ import com.enrollment.domain.user.repository.UserRepository;
 import com.enrollment.global.error.exception.BusinessException;
 import com.enrollment.global.error.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -83,5 +85,27 @@ public class ClassService {
         entity.validateOwner(userId);
         entity.close();
         return ClassResponse.from(entity);
+    }
+
+    // 강의 목록 조회
+    public Page<ClassResponse> getClasses(ClassStatus status, Pageable pageable) {
+        return classRepository.findByStatus(status, pageable)
+                .map(ClassResponse::from);
+    }
+
+    // 강의 상세 조회
+    public ClassResponse getClass(Long classId) {
+        ClassEntity entity = classRepository.findWithCreatorById(classId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLASS_NOT_FOUND));
+        return ClassResponse.from(entity);
+    }
+
+    // 내 강의 목록 조회
+    public Page<ClassResponse> getMyClasses(Long userId, Pageable pageable) {
+        if (!userRepository.existsById(userId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        return classRepository.findByCreatedById(userId, pageable)
+                .map(ClassResponse::from);
     }
 }

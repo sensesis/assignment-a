@@ -3,6 +3,8 @@ package com.enrollment.domain.classes.controller;
 import com.enrollment.domain.classes.dto.ClassResponse;
 import com.enrollment.domain.classes.entity.ClassStatus;
 import com.enrollment.domain.classes.service.ClassService;
+import com.enrollment.domain.enrollment.dto.EnrollmentWithUserResponse;
+import com.enrollment.domain.enrollment.service.EnrollmentService;
 import com.enrollment.global.error.GlobalExceptionHandler;
 import com.enrollment.global.error.exception.BusinessException;
 import com.enrollment.global.error.exception.ErrorCode;
@@ -38,6 +40,8 @@ class ClassControllerTest {
     ObjectMapper objectMapper;
     @MockBean
     ClassService classService;
+    @MockBean
+    EnrollmentService enrollmentService;
 
     private static final LocalDateTime NOW = LocalDateTime.of(2025, 1, 1, 0, 0);
 
@@ -444,6 +448,48 @@ class ClassControllerTest {
                             .param("size", "20"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+        }
+    }
+
+    @Nested
+    class GetClassEnrollments {
+
+        @Test
+        void 강사_본인_강의_수강생_목록_200() throws Exception {
+            EnrollmentWithUserResponse response = new EnrollmentWithUserResponse(
+                    100L, 2L, "student", "PENDING", NOW);
+            given(enrollmentService.getClassEnrollments(eq(1L), eq(1L), any()))
+                    .willReturn(new PageImpl<>(List.of(response), PageRequest.of(0, 20), 1));
+
+            mockMvc.perform(get("/classes/1/enrollments")
+                            .header("X-User-Id", 1L)
+                            .param("page", "0")
+                            .param("size", "20"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].enrollmentId").value(100))
+                    .andExpect(jsonPath("$.content[0].userName").value("student"));
+        }
+
+        @Test
+        void 소유자_불일치_시_403() throws Exception {
+            given(enrollmentService.getClassEnrollments(eq(999L), eq(1L), any()))
+                    .willThrow(new BusinessException(ErrorCode.NOT_COURSE_OWNER));
+
+            mockMvc.perform(get("/classes/1/enrollments")
+                            .header("X-User-Id", 999L))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("NOT_COURSE_OWNER"));
+        }
+
+        @Test
+        void 강의_미존재_시_404() throws Exception {
+            given(enrollmentService.getClassEnrollments(eq(1L), eq(999L), any()))
+                    .willThrow(new BusinessException(ErrorCode.CLASS_NOT_FOUND));
+
+            mockMvc.perform(get("/classes/999/enrollments")
+                            .header("X-User-Id", 1L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("CLASS_NOT_FOUND"));
         }
     }
 }

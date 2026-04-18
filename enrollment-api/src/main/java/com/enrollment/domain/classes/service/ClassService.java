@@ -2,6 +2,7 @@ package com.enrollment.domain.classes.service;
 
 import com.enrollment.domain.classes.dto.ClassCreateRequest;
 import com.enrollment.domain.classes.dto.ClassResponse;
+import com.enrollment.domain.classes.dto.ClassUpdateRequest;
 import com.enrollment.domain.classes.entity.ClassEntity;
 import com.enrollment.domain.classes.entity.ClassStatus;
 import com.enrollment.domain.classes.repository.ClassRepository;
@@ -51,5 +52,36 @@ public class ClassService {
 
         ClassEntity saved = classRepository.save(entity);
         return ClassResponse.from(saved);
+    }
+
+    // 강의 수정
+    @Transactional
+    public ClassResponse update(Long userId, Long classId, ClassUpdateRequest request) {
+        ClassEntity entity = classRepository.findWithCreatorById(classId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLASS_NOT_FOUND));
+        entity.validateOwner(userId);
+        entity.update(request.title(), request.description(), request.price(),
+                request.capacity(), request.startDate(), request.endDate());
+        return ClassResponse.from(entity);
+    }
+
+    // 강의 공개
+    @Transactional
+    public ClassResponse publish(Long userId, Long classId) {
+        ClassEntity entity = classRepository.findByIdForUpdate(classId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLASS_NOT_FOUND));
+        entity.validateOwner(userId);
+        entity.publish();
+        return ClassResponse.from(entity);
+    }
+
+    // 모집 마감
+    @Transactional
+    public ClassResponse close(Long userId, Long classId) {
+        ClassEntity entity = classRepository.findByIdForUpdate(classId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLASS_NOT_FOUND));
+        entity.validateOwner(userId);
+        entity.close();
+        return ClassResponse.from(entity);
     }
 }

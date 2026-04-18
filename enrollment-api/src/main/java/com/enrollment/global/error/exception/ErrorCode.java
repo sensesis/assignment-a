@@ -18,6 +18,7 @@ public enum ErrorCode {
 
     FORBIDDEN(HttpStatus.FORBIDDEN, "FORBIDDEN", "권한이 없습니다"),
     NOT_COURSE_OWNER(HttpStatus.FORBIDDEN, "NOT_COURSE_OWNER", "해당 강의의 소유자가 아닙니다"),
+    FORBIDDEN_ROLE(HttpStatus.FORBIDDEN, "FORBIDDEN_ROLE", "해당 역할은 이 작업을 수행할 수 없습니다"),
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다"),
     CLASS_NOT_FOUND(HttpStatus.NOT_FOUND, "CLASS_NOT_FOUND", "강의를 찾을 수 없습니다"),

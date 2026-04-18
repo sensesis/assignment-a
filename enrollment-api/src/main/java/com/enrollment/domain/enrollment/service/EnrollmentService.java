@@ -7,7 +7,9 @@ import com.enrollment.domain.enrollment.dto.EnrollmentCreateRequest;
 import com.enrollment.domain.enrollment.dto.EnrollmentResponse;
 import com.enrollment.domain.enrollment.entity.Enrollment;
 import com.enrollment.domain.enrollment.entity.EnrollmentStatus;
+import com.enrollment.domain.payment.entity.Payment;
 import com.enrollment.domain.enrollment.repository.EnrollmentRepository;
+import com.enrollment.domain.payment.repository.PaymentRepository;
 import com.enrollment.domain.user.entity.User;
 import com.enrollment.domain.user.repository.UserRepository;
 import com.enrollment.global.error.exception.BusinessException;
@@ -28,6 +30,7 @@ public class EnrollmentService {
             List.of(EnrollmentStatus.PENDING, EnrollmentStatus.CONFIRMED);
 
     private final EnrollmentRepository enrollmentRepository;
+    private final PaymentRepository paymentRepository;
     private final ClassRepository classRepository;
     private final UserRepository userRepository;
 
@@ -65,5 +68,57 @@ public class EnrollmentService {
                         .status(EnrollmentStatus.PENDING)
                         .enrolledAt(LocalDateTime.now())
                         .build()));
+    }
+
+    // 결제
+    @Transactional
+    public EnrollmentResponse pay(Long userId, Long enrollmentId) {
+
+        // 수강 신청 조회 (본인 row 상태 변경만이라 락 불필요, 상태머신 + uk_payment_paid 부분 유니크 인덱스로 방어)
+        Enrollment enrollment = enrollmentRepository.findWithClassAndUserById(enrollmentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND));
+
+        // 수강 신청 소유자 검증
+        enrollment.validateOwner(userId);
+
+        // 수강 신청 확정
+        enrollment.confirm();
+
+        // 결제 저장
+        paymentRepository.save(Payment.paid(enrollment, enrollment.getClassEntity().getPrice()));
+
+        return EnrollmentResponse.from(enrollment);
+    }
+
+    // 수강 취소
+    @Transactional
+    public EnrollmentResponse cancel(Long userId, Long enrollmentId) {
+
+        // 수강 신청 조회
+        Enrollment enrollment = enrollmentRepository.findByIdForUpdate(enrollmentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND));
+
+        // 수강 신청 소유자 검증
+        enrollment.validateOwner(userId);
+
+        // CONFIRMED 여부 확인
+        boolean wasConfirmed = enrollment.getStatus() == EnrollmentStatus.CONFIRMED;
+
+        // 강의 조회
+        ClassEntity classEntity = classRepository.findByIdForUpdate(enrollment.getClassEntity().getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLASS_NOT_FOUND));
+
+        // 수강 신청 취소
+        enrollment.cancel();
+
+        // 강의 수강생 수 감소
+        classEntity.decrementEnrolled();
+
+        // 환불 이력 저장
+        if (wasConfirmed) {
+            paymentRepository.save(Payment.refunded(enrollment, classEntity.getPrice()));
+        }
+
+        return EnrollmentResponse.from(enrollment);
     }
 }

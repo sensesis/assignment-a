@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.enrollment.domain.classes.service.ClassService;
 import com.enrollment.domain.enrollment.service.EnrollmentService;
+import com.enrollment.domain.waitlist.service.WaitlistService;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -33,6 +34,8 @@ class GlobalExceptionHandlerTest {
     ClassService classService;
     @MockBean
     EnrollmentService enrollmentService;
+    @MockBean
+    WaitlistService waitlistService;
 
     @Test
     void BusinessException_시_ErrorCode의_HttpStatus와_포맷으로_응답() throws Exception {

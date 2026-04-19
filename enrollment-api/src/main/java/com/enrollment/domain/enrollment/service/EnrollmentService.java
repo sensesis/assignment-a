@@ -13,6 +13,7 @@ import com.enrollment.domain.enrollment.repository.EnrollmentRepository;
 import com.enrollment.domain.payment.repository.PaymentRepository;
 import com.enrollment.domain.user.entity.User;
 import com.enrollment.domain.user.repository.UserRepository;
+import com.enrollment.domain.waitlist.service.WaitlistService;
 import com.enrollment.global.error.exception.BusinessException;
 import com.enrollment.global.error.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -36,11 +37,12 @@ public class EnrollmentService {
     private final PaymentRepository paymentRepository;
     private final ClassRepository classRepository;
     private final UserRepository userRepository;
+    private final WaitlistService waitlistService;
 
     // 수강 신청
     @Transactional
     public EnrollmentResponse enroll(Long userId, EnrollmentCreateRequest request) {
-
+        
         // 사용자 조회
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
@@ -76,7 +78,7 @@ public class EnrollmentService {
     // 결제
     @Transactional
     public EnrollmentResponse pay(Long userId, Long enrollmentId) {
-
+        
         // 수강 신청 조회 (본인 row 상태 변경만이라 락 불필요, 상태머신 + uk_payment_paid 부분 유니크 인덱스로 방어)
         Enrollment enrollment = enrollmentRepository.findWithClassAndUserById(enrollmentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND));
@@ -89,14 +91,14 @@ public class EnrollmentService {
 
         // 결제 저장
         paymentRepository.save(Payment.paid(enrollment, enrollment.getClassEntity().getPrice()));
-
+        
         return EnrollmentResponse.from(enrollment);
     }
 
     // 수강 취소
     @Transactional
     public EnrollmentResponse cancel(Long userId, Long enrollmentId) {
-
+        
         // 수강 신청 조회
         Enrollment enrollment = enrollmentRepository.findByIdForUpdate(enrollmentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND));
@@ -122,12 +124,15 @@ public class EnrollmentService {
             paymentRepository.save(Payment.refunded(enrollment, classEntity.getPrice()));
         }
 
+        // 대기열 선두 자동 승격
+        waitlistService.promoteNext(classEntity);
+
         return EnrollmentResponse.from(enrollment);
     }
 
     // 내 수강 신청 목록 조회
     public Page<EnrollmentResponse> getMyEnrollments(Long userId, Pageable pageable) {
-
+        
         // 사용자 존재 여부 검증
         if (!userRepository.existsById(userId)) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
@@ -139,7 +144,7 @@ public class EnrollmentService {
 
     // 강의별 수강생 목록 조회 (강사 전용)
     public Page<EnrollmentWithUserResponse> getClassEnrollments(Long userId, Long classId, Pageable pageable) {
-
+        
         // 강의 조회
         ClassEntity classEntity = classRepository.findWithCreatorById(classId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLASS_NOT_FOUND));

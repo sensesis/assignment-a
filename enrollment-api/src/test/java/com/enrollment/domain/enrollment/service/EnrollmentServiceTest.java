@@ -15,6 +15,7 @@ import com.enrollment.domain.payment.repository.PaymentRepository;
 import com.enrollment.domain.user.entity.User;
 import com.enrollment.domain.user.entity.UserRole;
 import com.enrollment.domain.user.repository.UserRepository;
+import com.enrollment.domain.waitlist.service.WaitlistService;
 import com.enrollment.global.error.exception.BusinessException;
 import com.enrollment.global.error.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +57,8 @@ class EnrollmentServiceTest {
     ClassRepository classRepository;
     @Mock
     UserRepository userRepository;
+    @Mock
+    WaitlistService waitlistService;
     @InjectMocks
     EnrollmentService enrollmentService;
 

@@ -205,7 +205,7 @@ class EnrollmentServiceTest {
         void 정상_결제() throws Exception {
             ClassEntity openClass = openClass(30, 1);
             Enrollment enrollment = pendingEnrollment(openClass);
-            given(enrollmentRepository.findWithClassAndUserById(100L)).willReturn(Optional.of(enrollment));
+            given(enrollmentRepository.findByIdForUpdate(100L)).willReturn(Optional.of(enrollment));
 
             ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
             given(paymentRepository.save(any(Payment.class))).willAnswer(inv -> inv.getArgument(0));
@@ -223,7 +223,7 @@ class EnrollmentServiceTest {
 
         @Test
         void 신청_미존재_시_ENROLLMENT_NOT_FOUND() {
-            given(enrollmentRepository.findWithClassAndUserById(999L)).willReturn(Optional.empty());
+            given(enrollmentRepository.findByIdForUpdate(999L)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> enrollmentService.pay(2L, 999L))
                     .isInstanceOf(BusinessException.class)
@@ -235,7 +235,7 @@ class EnrollmentServiceTest {
         void 소유자_불일치_시_NOT_ENROLLMENT_OWNER() throws Exception {
             ClassEntity openClass = openClass(30, 1);
             Enrollment enrollment = pendingEnrollment(openClass);
-            given(enrollmentRepository.findWithClassAndUserById(100L)).willReturn(Optional.of(enrollment));
+            given(enrollmentRepository.findByIdForUpdate(100L)).willReturn(Optional.of(enrollment));
 
             assertThatThrownBy(() -> enrollmentService.pay(999L, 100L))
                     .isInstanceOf(BusinessException.class)
@@ -248,12 +248,25 @@ class EnrollmentServiceTest {
             ClassEntity openClass = openClass(30, 1);
             Enrollment enrollment = pendingEnrollment(openClass);
             enrollment.confirm();
-            given(enrollmentRepository.findWithClassAndUserById(100L)).willReturn(Optional.of(enrollment));
+            given(enrollmentRepository.findByIdForUpdate(100L)).willReturn(Optional.of(enrollment));
 
             assertThatThrownBy(() -> enrollmentService.pay(2L, 100L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.INVALID_STATE_TRANSITION));
+        }
+
+        @Test
+        void 만료된_PENDING_결제_시_HOLD_EXPIRED() throws Exception {
+            ClassEntity openClass = openClass(30, 1);
+            Enrollment enrollment = pendingEnrollment(openClass);
+            setField(enrollment, "expiresAt", LocalDateTime.now().minusMinutes(1));
+            given(enrollmentRepository.findByIdForUpdate(100L)).willReturn(Optional.of(enrollment));
+
+            assertThatThrownBy(() -> enrollmentService.pay(2L, 100L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.HOLD_EXPIRED));
         }
     }
 

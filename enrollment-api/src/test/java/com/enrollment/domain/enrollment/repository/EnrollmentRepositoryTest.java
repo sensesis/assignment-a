@@ -157,12 +157,79 @@ class EnrollmentRepositoryTest extends AbstractIntegrationTest {
         assertThat(saved.getId()).isNotNull();
     }
 
+    @Test
+    void findExpiredPendings_PENDING_만료된_것만_반환() {
+        LocalDateTime now = LocalDateTime.now();
+
+        // 만료된 PENDING
+        User expiredUser = userRepository.saveAndFlush(
+                User.builder().name("expiredStudent").role(UserRole.CLASSMATE).build());
+        Enrollment expired = enrollmentRepository.saveAndFlush(
+                pendingEnrollmentWithExpiresAt(openClass, expiredUser, now.minusMinutes(1)));
+
+        // 아직 만료 안 된 PENDING
+        User freshUser = userRepository.saveAndFlush(
+                User.builder().name("freshStudent").role(UserRole.CLASSMATE).build());
+        enrollmentRepository.saveAndFlush(
+                pendingEnrollmentWithExpiresAt(openClass, freshUser, now.plusMinutes(10)));
+
+        // CONFIRMED (만료 컬럼 무관)
+        User confirmedUser = userRepository.saveAndFlush(
+                User.builder().name("confirmedStudent").role(UserRole.CLASSMATE).build());
+        Enrollment confirmed = newEnrollment(openClass, confirmedUser);
+        confirmed.confirm();
+        enrollmentRepository.saveAndFlush(confirmed);
+
+        // CANCELLED
+        User cancelledUser = userRepository.saveAndFlush(
+                User.builder().name("cancelledStudent").role(UserRole.CLASSMATE).build());
+        Enrollment cancelled = newEnrollment(openClass, cancelledUser);
+        cancelled.cancel();
+        enrollmentRepository.saveAndFlush(cancelled);
+
+        em.clear();
+
+        List<Enrollment> result = enrollmentRepository.findExpiredPendings(
+                EnrollmentStatus.PENDING, now, PageRequest.of(0, 100));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getId()).isEqualTo(expired.getId());
+    }
+
+    @Test
+    void findExpiredPendings_LIMIT_적용() {
+        LocalDateTime now = LocalDateTime.now();
+        for (int i = 0; i < 5; i++) {
+            User u = userRepository.saveAndFlush(
+                    User.builder().name("student" + i).role(UserRole.CLASSMATE).build());
+            enrollmentRepository.saveAndFlush(
+                    pendingEnrollmentWithExpiresAt(openClass, u, now.minusMinutes(1)));
+        }
+        em.clear();
+
+        List<Enrollment> result = enrollmentRepository.findExpiredPendings(
+                EnrollmentStatus.PENDING, now, PageRequest.of(0, 2));
+
+        assertThat(result).hasSize(2);
+    }
+
     private Enrollment newEnrollment(ClassEntity classEntity, User user) {
         return Enrollment.builder()
                 .classEntity(classEntity)
                 .user(user)
                 .status(EnrollmentStatus.PENDING)
                 .enrolledAt(LocalDateTime.now())
+                .build();
+    }
+
+    private Enrollment pendingEnrollmentWithExpiresAt(
+            ClassEntity classEntity, User user, LocalDateTime expiresAt) {
+        return Enrollment.builder()
+                .classEntity(classEntity)
+                .user(user)
+                .status(EnrollmentStatus.PENDING)
+                .enrolledAt(LocalDateTime.now())
+                .expiresAt(expiresAt)
                 .build();
     }
 }

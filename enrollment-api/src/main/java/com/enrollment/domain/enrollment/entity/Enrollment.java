@@ -33,6 +33,9 @@ import java.time.LocalDateTime;
 public class Enrollment extends BaseEntity {
 
     private static final int CANCEL_WINDOW_DAYS = 7;
+    // 결제 가능 시간 30분: 카드 결제 평균 + 재로그인/카드 교체 여유.
+    // 운영 중 조정 빈도가 낮다고 판단해 상수로 유지. 필요 시 application.yml로 이동.
+    private static final int PENDING_TTL_MINUTES = 30;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -60,11 +63,18 @@ public class Enrollment extends BaseEntity {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
     // 수강 신청 확정
     public void confirm() {
+        if (isExpired()) {
+            throw new BusinessException(ErrorCode.HOLD_EXPIRED);
+        }
         validateTransition(EnrollmentStatus.CONFIRMED);
         this.status = EnrollmentStatus.CONFIRMED;
         this.confirmedAt = LocalDateTime.now();
+        this.expiresAt = null;
     }
 
     // 수강 신청 취소
@@ -81,6 +91,24 @@ public class Enrollment extends BaseEntity {
         validateTransition(EnrollmentStatus.CANCELLED);
         this.status = EnrollmentStatus.CANCELLED;
         this.cancelledAt = LocalDateTime.now();
+    }
+
+    // PENDING TTL 만료 처리 (스케줄러 전용, 사용자 취소와 구분)
+    // - cancel()과 달리 상태 전이 검증 생략 (호출부에서 PENDING + 만료 확정)
+    // - 7일 기한 검증도 불필요 (만료 자체가 시스템 자동 종료)
+    public void expire() {
+        this.status = EnrollmentStatus.CANCELLED;
+        this.cancelledAt = LocalDateTime.now();
+    }
+
+    // TTL 만료 여부 확인
+    public boolean isExpired() {
+        return this.expiresAt != null && this.expiresAt.isBefore(LocalDateTime.now());
+    }
+
+    // 신청 / 승격 시 공통 TTL 세팅
+    public static LocalDateTime defaultExpiresAt() {
+        return LocalDateTime.now().plusMinutes(PENDING_TTL_MINUTES);
     }
 
     // 수강 신청 소유자 검증

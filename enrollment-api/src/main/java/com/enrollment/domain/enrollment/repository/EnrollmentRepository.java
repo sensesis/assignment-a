@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -47,4 +48,12 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
         return existsByClassIdAndUserIdAndStatusIn(classId, userId,
                 List.of(EnrollmentStatus.PENDING, EnrollmentStatus.CONFIRMED));
     }
+
+    // 만료된 PENDING 수강 신청 스캔 (오래 방치된 것부터 FIFO 처리)
+    @Query("SELECT e FROM Enrollment e JOIN FETCH e.classEntity "
+            + "WHERE e.status = :status AND e.expiresAt < :now "
+            + "ORDER BY e.expiresAt ASC")
+    List<Enrollment> findExpiredPendings(@Param("status") EnrollmentStatus status,
+                                         @Param("now") LocalDateTime now,
+                                         Pageable pageable);
 }

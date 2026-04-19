@@ -14,6 +14,7 @@ public enum ErrorCode {
     ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "ALREADY_CANCELLED", "이미 취소된 수강 신청입니다"),
     INVALID_STATE_TRANSITION(HttpStatus.BAD_REQUEST, "INVALID_STATE_TRANSITION", "허용되지 않은 상태 전이입니다"),
     WAITLIST_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "WAITLIST_NOT_ALLOWED", "대기열에 등록할 수 없습니다"),
+    HOLD_EXPIRED(HttpStatus.BAD_REQUEST, "HOLD_EXPIRED", "결제 가능 시간이 초과되었습니다"),
 
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다"),
 

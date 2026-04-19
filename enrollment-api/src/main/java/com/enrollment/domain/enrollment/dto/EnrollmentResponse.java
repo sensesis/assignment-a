@@ -14,6 +14,7 @@ public record EnrollmentResponse(
         LocalDateTime cancelledAt
 ) {
 
+    // 수강 신청 응답 생성
     public static EnrollmentResponse from(Enrollment enrollment) {
         return new EnrollmentResponse(
                 enrollment.getId(),

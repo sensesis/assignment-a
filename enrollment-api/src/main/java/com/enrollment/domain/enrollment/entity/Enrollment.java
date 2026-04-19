@@ -60,12 +60,14 @@ public class Enrollment extends BaseEntity {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
+    // 수강 신청 확정
     public void confirm() {
         validateTransition(EnrollmentStatus.CONFIRMED);
         this.status = EnrollmentStatus.CONFIRMED;
         this.confirmedAt = LocalDateTime.now();
     }
 
+    // 수강 신청 취소
     public void cancel() {
         if (this.status == EnrollmentStatus.CANCELLED) {
             throw new BusinessException(ErrorCode.ALREADY_CANCELLED);
@@ -81,12 +83,14 @@ public class Enrollment extends BaseEntity {
         this.cancelledAt = LocalDateTime.now();
     }
 
+    // 수강 신청 소유자 검증
     public void validateOwner(Long userId) {
         if (this.user == null || !this.user.getId().equals(userId)) {
             throw new BusinessException(ErrorCode.NOT_ENROLLMENT_OWNER);
         }
     }
 
+    // 상태 전환 검증
     private void validateTransition(EnrollmentStatus target) {
         if (!this.status.canTransitionTo(target)) {
             throw new BusinessException(ErrorCode.INVALID_STATE_TRANSITION);

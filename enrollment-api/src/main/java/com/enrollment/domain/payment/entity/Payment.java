@@ -48,6 +48,7 @@ public class Payment extends BaseEntity {
     @Column(name = "paid_at", nullable = false)
     private LocalDateTime paidAt;
 
+    // 결제 완료
     public static Payment paid(Enrollment enrollment, Integer amount) {
         return Payment.builder()
                 .enrollment(enrollment)
@@ -57,6 +58,7 @@ public class Payment extends BaseEntity {
                 .build();
     }
 
+    // 결제 취소
     public static Payment refunded(Enrollment enrollment, Integer amount) {
         return Payment.builder()
                 .enrollment(enrollment)

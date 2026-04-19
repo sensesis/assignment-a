@@ -12,6 +12,7 @@ public record EnrollmentWithUserResponse(
         LocalDateTime enrolledAt
 ) {
 
+    // 수강 신청 응답 생성
     public static EnrollmentWithUserResponse from(Enrollment enrollment) {
         return new EnrollmentWithUserResponse(
                 enrollment.getId(),

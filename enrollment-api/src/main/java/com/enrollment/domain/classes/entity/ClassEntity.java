@@ -123,6 +123,11 @@ public class ClassEntity extends BaseEntity {
         this.enrolledCount++;
     }
 
+    // 정원 여유 확인
+    public boolean hasVacancy() {
+        return this.enrolledCount < this.capacity;
+    }
+
     // 수강생 수 감소
     public void decrementEnrolled() {
         if (this.enrolledCount <= 0) {

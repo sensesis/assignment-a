@@ -8,10 +8,15 @@ import jakarta.validation.constraints.Positive;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.*;
+
+import com.enrollment.domain.classes.service.ClassService;
+import com.enrollment.domain.enrollment.service.EnrollmentService;
+import com.enrollment.domain.waitlist.service.WaitlistService;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -25,6 +30,12 @@ class GlobalExceptionHandlerTest {
 
     @Autowired
     MockMvc mockMvc;
+    @MockBean
+    ClassService classService;
+    @MockBean
+    EnrollmentService enrollmentService;
+    @MockBean
+    WaitlistService waitlistService;
 
     @Test
     void BusinessException_시_ErrorCode의_HttpStatus와_포맷으로_응답() throws Exception {
@@ -55,6 +66,13 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.path").value("/test/unexpected"));
     }
 
+    @Test
+    void PropertyReferenceException_시_400_INVALID_INPUT() throws Exception {
+        mockMvc.perform(get("/test/bad-sort"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
     @RestController
     @RequestMapping("/test")
     static class TestController {
@@ -71,6 +89,14 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/unexpected")
         public void unexpected() {
             throw new IllegalStateException("boom");
+        }
+
+        @GetMapping("/bad-sort")
+        public void badSort() {
+            throw new org.springframework.data.mapping.PropertyReferenceException(
+                    "[\"string\"]",
+                    org.springframework.data.util.TypeInformation.of(Object.class),
+                    java.util.Collections.emptyList());
         }
 
         record Payload(@NotBlank String title, @Positive int price) {

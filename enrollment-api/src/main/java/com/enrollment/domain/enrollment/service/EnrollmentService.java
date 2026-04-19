@@ -80,8 +80,8 @@ public class EnrollmentService {
     @Transactional
     public EnrollmentResponse pay(Long userId, Long enrollmentId) {
 
-        // 수강 신청 조회 (본인 row 상태 변경만이라 락 불필요, 상태머신 + uk_payment_paid 부분 유니크 인덱스로 방어)
-        Enrollment enrollment = enrollmentRepository.findWithClassAndUserById(enrollmentId)
+        // 수강 신청 조회 (만료 스케줄러와의 race 방지 위해 비관적 락으로 직렬화)
+        Enrollment enrollment = enrollmentRepository.findByIdForUpdate(enrollmentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND));
 
         // 수강 신청 소유자 검증

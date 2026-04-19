@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
@@ -40,4 +41,10 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
             @Param("classId") Long classId,
             @Param("userId") Long userId,
             @Param("statuses") Collection<EnrollmentStatus> statuses);
+
+    // 활성 수강 신청(PENDING/CONFIRMED) 존재 여부 검증
+    default boolean existsActiveByClassIdAndUserId(Long classId, Long userId) {
+        return existsByClassIdAndUserIdAndStatusIn(classId, userId,
+                List.of(EnrollmentStatus.PENDING, EnrollmentStatus.CONFIRMED));
+    }
 }

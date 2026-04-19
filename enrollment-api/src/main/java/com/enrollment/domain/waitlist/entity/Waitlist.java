@@ -1,4 +1,4 @@
-package com.enrollment.domain.enrollment.entity;
+package com.enrollment.domain.waitlist.entity;
 
 import com.enrollment.domain.classes.entity.ClassEntity;
 import com.enrollment.domain.user.entity.User;
@@ -25,18 +25,16 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "enrollments")
+@Table(name = "waitlists")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class Enrollment extends BaseEntity {
-
-    private static final int CANCEL_WINDOW_DAYS = 7;
+public class Waitlist extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "enrollment_id")
+    @Column(name = "waitlist_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -49,49 +47,51 @@ public class Enrollment extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private EnrollmentStatus status;
+    private WaitlistStatus status;
 
-    @Column(name = "enrolled_at", nullable = false)
-    private LocalDateTime enrolledAt;
+    @Column(name = "promoted_enrollment_id")
+    private Long promotedEnrollmentId;
 
-    @Column(name = "confirmed_at")
-    private LocalDateTime confirmedAt;
+    @Column(name = "promoted_at")
+    private LocalDateTime promotedAt;
 
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
-    // 수강 신청 확정
-    public void confirm() {
-        validateTransition(EnrollmentStatus.CONFIRMED);
-        this.status = EnrollmentStatus.CONFIRMED;
-        this.confirmedAt = LocalDateTime.now();
+    // 대기열 승격
+    public void promote(Long enrollmentId) {
+        validateTransition(WaitlistStatus.PROMOTED);
+        this.status = WaitlistStatus.PROMOTED;
+        this.promotedEnrollmentId = enrollmentId;
+        this.promotedAt = LocalDateTime.now();
     }
 
-    // 수강 신청 취소
+    // 대기열 철회
     public void cancel() {
-        if (this.status == EnrollmentStatus.CANCELLED) {
+        if (this.status == WaitlistStatus.CANCELLED) {
             throw new BusinessException(ErrorCode.ALREADY_CANCELLED);
         }
-        if (this.status == EnrollmentStatus.CONFIRMED) {
-            if (this.confirmedAt == null
-                    || this.confirmedAt.plusDays(CANCEL_WINDOW_DAYS).isBefore(LocalDateTime.now())) {
-                throw new BusinessException(ErrorCode.CANCEL_PERIOD_EXPIRED);
-            }
-        }
-        validateTransition(EnrollmentStatus.CANCELLED);
-        this.status = EnrollmentStatus.CANCELLED;
+        validateTransition(WaitlistStatus.CANCELLED);
+        this.status = WaitlistStatus.CANCELLED;
         this.cancelledAt = LocalDateTime.now();
     }
 
-    // 수강 신청 소유자 검증
+    // 선두 스킵 — 승격 시 이미 활성 수강 신청을 가진 대기자를 건너뛰기 위한 방어 처리.
+    // 호출부(WaitlistService.promoteNext)가 WAITING 상태만 넘겨주는 것을 보장하므로 상태머신 검증 생략.
+    public void skip() {
+        this.status = WaitlistStatus.CANCELLED;
+        this.cancelledAt = LocalDateTime.now();
+    }
+
+    // 대기열 소유자 검증
     public void validateOwner(Long userId) {
         if (this.user == null || !this.user.getId().equals(userId)) {
-            throw new BusinessException(ErrorCode.NOT_ENROLLMENT_OWNER);
+            throw new BusinessException(ErrorCode.NOT_WAITLIST_OWNER);
         }
     }
 
     // 상태 전환 검증
-    private void validateTransition(EnrollmentStatus target) {
+    private void validateTransition(WaitlistStatus target) {
         if (!this.status.canTransitionTo(target)) {
             throw new BusinessException(ErrorCode.INVALID_STATE_TRANSITION);
         }

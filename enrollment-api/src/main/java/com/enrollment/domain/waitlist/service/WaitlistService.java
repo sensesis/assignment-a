@@ -15,12 +15,14 @@ import com.enrollment.domain.waitlist.repository.WaitlistRepository;
 import com.enrollment.global.error.exception.BusinessException;
 import com.enrollment.global.error.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -117,10 +119,15 @@ public class WaitlistService {
                             .user(next.getUser())
                             .status(EnrollmentStatus.PENDING)
                             .enrolledAt(LocalDateTime.now())
+                            .expiresAt(Enrollment.defaultExpiresAt())
                             .build());
 
             // 대기열 승격
             next.promote(promoted.getId());
+
+            // 승격 알림 로그
+            log.info("[Waitlist] Promoted user={} to enrollment={} (expiresAt={})",
+                    next.getUser().getId(), promoted.getId(), promoted.getExpiresAt());
             break;
         }
     }

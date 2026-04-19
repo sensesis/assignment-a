@@ -90,6 +90,88 @@ class EnrollmentTest {
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.INVALID_STATE_TRANSITION));
         }
+
+        @Test
+        void 만료_이전_confirm_성공_후_expiresAt_null() throws Exception {
+            Enrollment enrollment = newEnrollment(openClass, classmate);
+            setField(enrollment, "expiresAt", LocalDateTime.now().plusMinutes(10));
+
+            enrollment.confirm();
+
+            assertThat(enrollment.getStatus()).isEqualTo(EnrollmentStatus.CONFIRMED);
+            assertThat(enrollment.getExpiresAt()).isNull();
+        }
+
+        @Test
+        void 만료_이후_confirm_시_HOLD_EXPIRED() throws Exception {
+            Enrollment enrollment = newEnrollment(openClass, classmate);
+            setField(enrollment, "expiresAt", LocalDateTime.now().minusSeconds(1));
+
+            assertThatThrownBy(enrollment::confirm)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.HOLD_EXPIRED));
+        }
+    }
+
+    @Nested
+    class Expire {
+
+        @Test
+        void PENDING에서_expire_시_CANCELLED_및_cancelledAt_세팅() {
+            Enrollment enrollment = newEnrollment(openClass, classmate);
+
+            enrollment.expire();
+
+            assertThat(enrollment.getStatus()).isEqualTo(EnrollmentStatus.CANCELLED);
+            assertThat(enrollment.getCancelledAt()).isNotNull();
+        }
+    }
+
+    @Nested
+    class IsExpired {
+
+        @Test
+        void expiresAt_null_이면_false() {
+            Enrollment enrollment = newEnrollment(openClass, classmate);
+            assertThat(enrollment.isExpired()).isFalse();
+        }
+
+        @Test
+        void 정확히_30분_이전_expiresAt이면_false() throws Exception {
+            Enrollment enrollment = newEnrollment(openClass, classmate);
+            // 30분 - 1초 (아직 유효)
+            setField(enrollment, "expiresAt", LocalDateTime.now().plusMinutes(29).plusSeconds(59));
+            assertThat(enrollment.isExpired()).isFalse();
+        }
+
+        @Test
+        void 과거_expiresAt이면_true() throws Exception {
+            Enrollment enrollment = newEnrollment(openClass, classmate);
+            setField(enrollment, "expiresAt", LocalDateTime.now().minusSeconds(1));
+            assertThat(enrollment.isExpired()).isTrue();
+        }
+
+        @Test
+        void 미래_expiresAt이면_false() throws Exception {
+            Enrollment enrollment = newEnrollment(openClass, classmate);
+            setField(enrollment, "expiresAt", LocalDateTime.now().plusMinutes(30).plusSeconds(1));
+            assertThat(enrollment.isExpired()).isFalse();
+        }
+    }
+
+    @Nested
+    class DefaultExpiresAt {
+
+        @Test
+        void defaultExpiresAt은_현재시각_30분_후() {
+            LocalDateTime before = LocalDateTime.now().plusMinutes(30).minusSeconds(1);
+            LocalDateTime value = Enrollment.defaultExpiresAt();
+            LocalDateTime after = LocalDateTime.now().plusMinutes(30).plusSeconds(1);
+
+            assertThat(value).isAfter(before);
+            assertThat(value).isBefore(after);
+        }
     }
 
     @Nested
